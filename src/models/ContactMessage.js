@@ -1,14 +1,21 @@
-import mongoose from "mongoose";
+import { DataTypes } from "sequelize";
+import { sequelize } from "../config/db.js";
 
-const contactMessageSchema = new mongoose.Schema(
+const ContactMessage = sequelize.define(
+  "ContactMessage",
   {
-    name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, trim: true },
-    subject: { type: String, default: "" },
-    message: { type: String, required: true },
-    read: { type: Boolean, default: false },
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    name: { type: DataTypes.STRING, allowNull: false },
+    email: { type: DataTypes.STRING, allowNull: false, set(value) { this.setDataValue("email", String(value || "").toLowerCase().trim()); } },
+    subject: { type: DataTypes.STRING, defaultValue: "" },
+    message: { type: DataTypes.TEXT, allowNull: false },
+    read: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { timestamps: true }
+  { tableName: "contact_messages", timestamps: true }
 );
 
-export default mongoose.model("ContactMessage", contactMessageSchema);
+export default ContactMessage;

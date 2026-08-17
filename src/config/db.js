@@ -1,25 +1,42 @@
-import mongoose from "mongoose";
 import dotenv from "dotenv";
+import { Sequelize } from "sequelize";
+import { newDb } from "pg-mem";
 
 dotenv.config();
 
-const MONGODB_URI = process.env.MONGODB_URI;
+const usePgMem = process.env.USE_PG_MEM === "true" || process.env.NODE_ENV === "test";
 
-const isAtlas = MONGODB_URI && MONGODB_URI.includes("mongodb+srv://");
+const pgMemDb = usePgMem ? newDb() : null;
+
+export const sequelize = usePgMem
+  ? new Sequelize({
+      dialect: "postgres",
+      dialectModule: pgMemDb.adapters.createPg(),
+      database: process.env.PGDATABASE || "sda_youth",
+      username: process.env.PGUSER || "postgres",
+      password: process.env.PGPASSWORD || "postgres",
+      host: process.env.PGHOST || "localhost",
+      port: Number(process.env.PGPORT || 5432),
+      logging: false,
+    })
+  : new Sequelize(process.env.DATABASE_URL || process.env.POSTGRES_URI || "postgres://postgres:postgres@localhost:5432/sda_youth", {
+      dialect: "postgres",
+      logging: false,
+      pool: {
+        max: 10,
+        min: 0,
+        acquire: 30000,
+        idle: 10000,
+      },
+    });
 
 export const connectDB = async () => {
   try {
-    await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 30000,
-      socketTimeoutMS: 45000,
-      tls: isAtlas,
-      retryWrites: true,
-      w: "majority",
-      maxPoolSize: 10,
-    });
-    console.log("MongoDB connected successfully");
+    await sequelize.authenticate();
+    await sequelize.sync({ alter: true, logging: false });
+    console.log(usePgMem ? "pg-mem PostgreSQL database initialized successfully" : "PostgreSQL connected successfully");
   } catch (err) {
-    console.error("MongoDB connection error:", err.message);
+    console.error("PostgreSQL connection error:", err.message);
     process.exit(1);
   }
 };

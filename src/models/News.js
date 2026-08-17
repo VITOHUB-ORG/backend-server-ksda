@@ -1,17 +1,24 @@
-import mongoose from "mongoose";
+import { DataTypes } from "sequelize";
+import { sequelize } from "../config/db.js";
 
-const newsSchema = new mongoose.Schema(
+const News = sequelize.define(
+  "News",
   {
-    title: { type: String, required: true, trim: true },
-    slug: { type: String, unique: true, lowercase: true, trim: true },
-    excerpt: { type: String, default: "" },
-    content: { type: String, default: "" },
-    category: { type: String, default: "Announcement" },
-    image: { type: String, default: "" },
-    author: { type: String, default: "SDA Youth Ministry" },
-    published: { type: Boolean, default: true },
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    title: { type: DataTypes.STRING, allowNull: false },
+    slug: { type: DataTypes.STRING, unique: true, set(value) { this.setDataValue("slug", String(value || "").toLowerCase().trim()); } },
+    excerpt: { type: DataTypes.TEXT, defaultValue: "" },
+    content: { type: DataTypes.TEXT, defaultValue: "" },
+    category: { type: DataTypes.STRING, defaultValue: "Announcement" },
+    image: { type: DataTypes.STRING, defaultValue: "" },
+    author: { type: DataTypes.STRING, defaultValue: "SDA Youth Ministry" },
+    published: { type: DataTypes.BOOLEAN, defaultValue: true },
   },
-  { timestamps: true }
+  { tableName: "news", timestamps: true }
 );
 
-export default mongoose.model("News", newsSchema);
+export default News;

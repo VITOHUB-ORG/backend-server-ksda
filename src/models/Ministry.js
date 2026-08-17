@@ -1,28 +1,35 @@
-import mongoose from "mongoose";
+import { DataTypes } from "sequelize";
+import { sequelize } from "../config/db.js";
 
-const ministrySchema = new mongoose.Schema(
+const Ministry = sequelize.define(
+  "Ministry",
   {
-    name: { type: String, required: true, trim: true },
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    name: { type: DataTypes.STRING, allowNull: false },
     slug: {
-      type: String,
-      enum: ["adventurers", "pathfinders", "ambassadors", "young-adults", "senior-youth", "mission"],
-      required: true,
+      type: DataTypes.STRING,
+      allowNull: false,
       unique: true,
+      validate: { isIn: [["adventurers", "pathfinders", "ambassadors", "young-adults", "senior-youth", "mission"]] },
     },
-    tagline: { type: String, default: "" },
-    description: { type: String, default: "" },
+    tagline: { type: DataTypes.STRING, defaultValue: "" },
+    description: { type: DataTypes.TEXT, defaultValue: "" },
     color: {
-      type: String,
-      enum: ["green", "blue", "orange", "purple", "gold", "burgundy"],
-      default: "blue",
+      type: DataTypes.STRING,
+      defaultValue: "blue",
+      validate: { isIn: [["green", "blue", "orange", "purple", "gold", "burgundy"]] },
     },
-    image: { type: String, default: "" },
-    leaderName: { type: String, default: "" },
-    leaderTitle: { type: String, default: "" },
-    contact: { type: String, default: "" },
-    published: { type: Boolean, default: true },
+    image: { type: DataTypes.STRING, defaultValue: "" },
+    leaderName: { type: DataTypes.STRING, defaultValue: "" },
+    leaderTitle: { type: DataTypes.STRING, defaultValue: "" },
+    contact: { type: DataTypes.STRING, defaultValue: "" },
+    published: { type: DataTypes.BOOLEAN, defaultValue: true },
   },
-  { timestamps: true }
+  { tableName: "ministries", timestamps: true }
 );
 
-export default mongoose.model("Ministry", ministrySchema);
+export default Ministry;

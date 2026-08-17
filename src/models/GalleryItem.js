@@ -1,19 +1,26 @@
-import mongoose from "mongoose";
+import { DataTypes } from "sequelize";
+import { sequelize } from "../config/db.js";
 
-const galleryItemSchema = new mongoose.Schema(
+const GalleryItem = sequelize.define(
+  "GalleryItem",
   {
-    title: { type: String, default: "" },
-    category: {
-      type: String,
-      enum: ["worship", "fellowship", "service", "mission", "leadership"],
-      default: "fellowship",
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
     },
-    image: { type: String, default: "" },
-    images: { type: [String], default: [] },
-    caption: { type: String, default: "" },
-    featured: { type: Boolean, default: false },
+    title: { type: DataTypes.STRING, defaultValue: "" },
+    category: {
+      type: DataTypes.STRING,
+      defaultValue: "fellowship",
+      validate: { isIn: [["worship", "fellowship", "service", "mission", "leadership"]] },
+    },
+    image: { type: DataTypes.STRING, defaultValue: "" },
+    images: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] },
+    caption: { type: DataTypes.TEXT, defaultValue: "" },
+    featured: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
-  { timestamps: true }
+  { tableName: "gallery_items", timestamps: true }
 );
 
-export default mongoose.model("GalleryItem", galleryItemSchema);
+export default GalleryItem;

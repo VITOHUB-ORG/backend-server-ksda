@@ -1,10 +1,8 @@
-import { MongoMemoryServer } from "mongodb-memory-server";
-
 process.env.JWT_SECRET = "test_secret_key_for_smoke_test";
 process.env.PORT = "5999";
-
-const mongod = await MongoMemoryServer.create();
-process.env.MONGODB_URI = mongod.getUri("sda_youth_test");
+process.env.NODE_ENV = "test";
+process.env.USE_PG_MEM = "true";
+process.env.PUBLIC_URL = "http://localhost:5999";
 
 await import("../src/index.js");
 
@@ -84,7 +82,8 @@ const evRes = await fetch(BASE + "/api/admin/events", {
   }),
 });
 const ev = await evRes.json();
-check("admin creates event (201)", evRes.status === 201 && !!ev._id);
+const eventId = ev.id ?? ev._id;
+check("admin creates event (201)", evRes.status === 201 && !!eventId);
 
 // 8. Slug auto-generated
 check("event slug auto-generated", ev.slug === "test-youth-conference");
@@ -131,7 +130,8 @@ const upNoAuth = await fetch(BASE + "/api/upload", {
 check("upload without token rejected (401)", upNoAuth.status === 401);
 
 // 8e. Uploaded file is served statically
-const fileRes = await fetch(up.url);
+const fileUrl = new URL(up.url, BASE).toString();
+const fileRes = await fetch(fileUrl);
 check("uploaded file served statically (200)", fileRes.ok && fileRes.headers.get("content-type").includes("image"));
 
 // 8f. Reject non-image/pdf upload
@@ -147,20 +147,20 @@ check("non-image/pdf upload rejected", badRes2.status >= 400);
 // 9. Public events returns published event
 const pubEv = await fetch(BASE + "/api/public/events");
 const pubEvData = await pubEv.json();
-check("public events includes created event", pubEvData.items.some((e) => e._id === ev._id));
+check("public events includes created event", pubEvData.items.some((e) => (e._id ?? e.id) === eventId));
 
 // 10. Unpublished hidden from public
-await fetch(BASE + "/api/admin/events/" + ev._id, {
+await fetch(BASE + "/api/admin/events/" + eventId, {
   method: "PUT",
   headers: auth,
   body: JSON.stringify({ published: false }),
 });
 const pubEv2 = await fetch(BASE + "/api/public/events");
 const pubEvData2 = await pubEv2.json();
-check("unpublished event hidden from public", !pubEvData2.items.some((e) => e._id === ev._id));
+check("unpublished event hidden from public", !pubEvData2.items.some((e) => (e._id ?? e.id) === eventId));
 
 // 11. Admin delete
-const del = await fetch(BASE + "/api/admin/events/" + ev._id, {
+const del = await fetch(BASE + "/api/admin/events/" + eventId, {
   method: "DELETE",
   headers: auth,
 });
@@ -193,19 +193,19 @@ const tRes = await fetch(BASE + "/api/public/testimonials", {
   body: JSON.stringify({ name: "Sam", testimony: "God is good" }),
 });
 const t = await tRes.json();
+const testimonyId = t.id ?? t._id;
 const tPub = await fetch(BASE + "/api/public/testimonials");
 const tPubData = await tPub.json();
-check("unapproved testimony hidden from public", !tPubData.items.some((x) => x._id === t._id));
+check("unapproved testimony hidden from public", !tPubData.items.some((x) => (x._id ?? x.id) === testimonyId));
 
-await fetch(BASE + "/api/admin/testimonials/" + t._id, {
+await fetch(BASE + "/api/admin/testimonials/" + testimonyId, {
   method: "PUT",
   headers: auth,
   body: JSON.stringify({ approved: true }),
 });
 const tPub2 = await fetch(BASE + "/api/public/testimonials");
 const tPubData2 = await tPub2.json();
-check("approved testimony appears publicly", tPubData2.items.some((x) => x._id === t._id));
+check("approved testimony appears publicly", tPubData2.items.some((x) => (x._id ?? x.id) === testimonyId));
 
 console.log(failures === 0 ? "\nALL TESTS PASSED" : `\n${failures} TEST(S) FAILED`);
-await mongod.stop();
 process.exit(failures === 0 ? 0 : 1);

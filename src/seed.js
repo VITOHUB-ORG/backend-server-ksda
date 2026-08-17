@@ -169,7 +169,7 @@ const seed = async () => {
   const password = process.env.ADMIN_PASSWORD || "Admin@123";
 
   const hash = await bcrypt.hash(password, 10);
-  const existing = await Admin.findOne({ email });
+  const existing = await Admin.findOne({ where: { email } });
   if (existing) {
     existing.password = hash;
     existing.role = "superadmin";
@@ -180,20 +180,20 @@ const seed = async () => {
     console.log(`Admin created: ${email}`);
   }
 
-  await Ministry.deleteMany({});
-  await Ministry.insertMany(ministries);
+  await Ministry.destroy({ where: {} });
+  await Ministry.bulkCreate(ministries);
   console.log(`Seeded ${ministries.length} ministries`);
 
-  await Resource.deleteMany({});
-  await Resource.insertMany(resources);
+  await Resource.destroy({ where: {} });
+  await Resource.bulkCreate(resources);
   console.log(`Seeded ${resources.length} resources`);
 
-  await Event.deleteMany({});
-  await Event.insertMany(events);
+  await Event.destroy({ where: {} });
+  await Event.bulkCreate(events);
   console.log(`Seeded ${events.length} events`);
 
-  await News.deleteMany({});
-  await News.insertMany(news);
+  await News.destroy({ where: {} });
+  await News.bulkCreate(news);
   console.log(`Seeded ${news.length} news items`);
 
   process.exit(0);

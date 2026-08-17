@@ -1,14 +1,21 @@
-import mongoose from "mongoose";
+import { DataTypes } from "sequelize";
+import { sequelize } from "../config/db.js";
 
-const prayerRequestSchema = new mongoose.Schema(
+const PrayerRequest = sequelize.define(
+  "PrayerRequest",
   {
-    name: { type: String, required: true, trim: true },
-    email: { type: String, default: "" },
-    prayer: { type: String, required: true },
-    isPublic: { type: Boolean, default: false },
-    status: { type: String, enum: ["pending", "prayed", "answered"], default: "pending" },
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    name: { type: DataTypes.STRING, allowNull: false },
+    email: { type: DataTypes.STRING, defaultValue: "" },
+    prayer: { type: DataTypes.TEXT, allowNull: false },
+    isPublic: { type: DataTypes.BOOLEAN, defaultValue: false },
+    status: { type: DataTypes.STRING, defaultValue: "pending", validate: { isIn: [["pending", "prayed", "answered"]] } },
   },
-  { timestamps: true }
+  { tableName: "prayer_requests", timestamps: true }
 );
 
-export default mongoose.model("PrayerRequest", prayerRequestSchema);
+export default PrayerRequest;

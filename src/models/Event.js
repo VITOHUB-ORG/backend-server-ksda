@@ -1,26 +1,33 @@
-import mongoose from "mongoose";
+import { DataTypes } from "sequelize";
+import { sequelize } from "../config/db.js";
 
-const eventSchema = new mongoose.Schema(
+const Event = sequelize.define(
+  "Event",
   {
-    title: { type: String, required: true, trim: true },
-    slug: { type: String, unique: true, lowercase: true, trim: true },
-    description: { type: String, default: "" },
-    location: { type: String, default: "" },
-    startDate: { type: Date, required: true },
-    endDate: { type: Date },
-    time: { type: String, default: "" },
-    ministry: {
-      type: String,
-      enum: ["adventurers", "pathfinders", "ambassadors", "young-adults", "senior-youth", "mission", "general"],
-      default: "general",
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
     },
-    image: { type: String, default: "" },
-    youtubeUrl: { type: String, default: "" },
-    registrationLink: { type: String, default: "" },
-    featured: { type: Boolean, default: false },
-    published: { type: Boolean, default: true },
+    title: { type: DataTypes.STRING, allowNull: false },
+    slug: { type: DataTypes.STRING, unique: true, set(value) { this.setDataValue("slug", String(value || "").toLowerCase().trim()); } },
+    description: { type: DataTypes.TEXT, defaultValue: "" },
+    location: { type: DataTypes.STRING, defaultValue: "" },
+    startDate: { type: DataTypes.DATE, allowNull: false },
+    endDate: { type: DataTypes.DATE, allowNull: true },
+    time: { type: DataTypes.STRING, defaultValue: "" },
+    ministry: {
+      type: DataTypes.STRING,
+      defaultValue: "general",
+      validate: { isIn: [["adventurers", "pathfinders", "ambassadors", "young-adults", "senior-youth", "mission", "general"]] },
+    },
+    image: { type: DataTypes.STRING, defaultValue: "" },
+    youtubeUrl: { type: DataTypes.STRING, defaultValue: "" },
+    registrationLink: { type: DataTypes.STRING, defaultValue: "" },
+    featured: { type: DataTypes.BOOLEAN, defaultValue: false },
+    published: { type: DataTypes.BOOLEAN, defaultValue: true },
   },
-  { timestamps: true }
+  { tableName: "events", timestamps: true }
 );
 
-export default mongoose.model("Event", eventSchema);
+export default Event;

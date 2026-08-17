@@ -1,20 +1,27 @@
-import mongoose from "mongoose";
+import { DataTypes } from "sequelize";
+import { sequelize } from "../config/db.js";
 
-const resourceSchema = new mongoose.Schema(
+const Resource = sequelize.define(
+  "Resource",
   {
-    title: { type: String, required: true, trim: true },
-    type: {
-      type: String,
-      enum: ["bible-study", "devotional", "sermon", "prayer", "testimony", "download"],
-      default: "bible-study",
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
     },
-    description: { type: String, default: "" },
-    fileUrl: { type: String, default: "" },
-    link: { type: String, default: "" },
-    author: { type: String, default: "" },
-    published: { type: Boolean, default: true },
+    title: { type: DataTypes.STRING, allowNull: false },
+    type: {
+      type: DataTypes.STRING,
+      defaultValue: "bible-study",
+      validate: { isIn: [["bible-study", "devotional", "sermon", "prayer", "testimony", "download"]] },
+    },
+    description: { type: DataTypes.TEXT, defaultValue: "" },
+    fileUrl: { type: DataTypes.STRING, defaultValue: "" },
+    link: { type: DataTypes.STRING, defaultValue: "" },
+    author: { type: DataTypes.STRING, defaultValue: "" },
+    published: { type: DataTypes.BOOLEAN, defaultValue: true },
   },
-  { timestamps: true }
+  { tableName: "resources", timestamps: true }
 );
 
-export default mongoose.model("Resource", resourceSchema);
+export default Resource;

@@ -10,13 +10,62 @@ const cleanQuery = (query) => {
   return clean;
 };
 
-// Keep the cover `image` field in sync with the `images` array so legacy
-// consumers (thumbnails, list views) still work after multi-image support.
+const normalizeFilter = (filter) => {
+  const where = {};
+  for (const [key, value] of Object.entries(filter || {})) {
+    if (value === undefined || value === null || value === "") continue;
+
+    if (typeof value === "boolean") {
+      where[key] = value;
+      continue;
+    }
+
+    if (typeof value === "string") {
+      const normalized = value.trim();
+      if (normalized.toLowerCase() === "true") {
+        where[key] = true;
+        continue;
+      }
+      if (normalized.toLowerCase() === "false") {
+        where[key] = false;
+        continue;
+      }
+      if (normalized.toLowerCase() === "null") {
+        where[key] = null;
+        continue;
+      }
+    }
+
+    if (!Number.isNaN(Number(value)) && key !== "slug" && key !== "title" && value !== "" && String(value).trim() !== "") {
+      where[key] = Number(value);
+      continue;
+    }
+
+    where[key] = value;
+  }
+  return where;
+};
+
+const parseSort = (sortValue) => {
+  const sort = sortValue || "-createdAt";
+  const descending = sort.startsWith("-");
+  const field = descending ? sort.slice(1) : sort;
+  return [[field, descending ? "DESC" : "ASC"]];
+};
+
 const syncGalleryImages = (body) => {
   if (!body || !Array.isArray(body.images)) return;
   const images = body.images.filter((src) => typeof src === "string" && src.trim() !== "");
   body.images = images;
   body.image = images[0] || body.image || "";
+};
+
+const serializeRecord = (record) => {
+  if (!record) return record;
+  const plain = record.toJSON ? record.toJSON() : { ...record };
+  const result = { ...plain };
+  if (result.id !== undefined && result._id === undefined) result._id = result.id;
+  return result;
 };
 
 export const crudRoutes = (Model, { publicOnly = false, publicFilter } = {}) => {
@@ -28,17 +77,20 @@ export const crudRoutes = (Model, { publicOnly = false, publicFilter } = {}) => 
     try {
       const page = Math.max(parseInt(req.query.page) || 1, 1);
       const limit = Math.min(Math.max(parseInt(req.query.limit) || 50, 1), 100);
-      const sort = req.query.sort || "-createdAt";
-      const filter = cleanQuery(req.query);
+      const sort = parseSort(req.query.sort);
+      const filter = normalizeFilter(cleanQuery(req.query));
 
-      if (publicOnly) Object.assign(filter, publicFilter ?? { published: true });
+      if (publicOnly) Object.assign(filter, normalizeFilter(publicFilter ?? { published: true }));
 
-      const [total, items] = await Promise.all([
-        Model.countDocuments(filter),
-        Model.find(filter).sort(sort).skip((page - 1) * limit).limit(limit),
-      ]);
+      const total = await Model.count({ where: filter });
+      const items = await Model.findAll({
+        where: filter,
+        order: sort,
+        limit,
+        offset: (page - 1) * limit,
+      });
 
-      res.json({ items, total, page, pages: Math.ceil(total / limit) });
+      res.json({ items: items.map(serializeRecord), total, page, pages: Math.ceil(total / limit) });
     } catch (err) {
       next(err);
     }
@@ -46,12 +98,13 @@ export const crudRoutes = (Model, { publicOnly = false, publicFilter } = {}) => 
 
   router.get("/:id", async (req, res, next) => {
     try {
-      const isObjectId = /^[0-9a-fA-F]{24}$/.test(req.params.id);
-      const item = isObjectId
-        ? await Model.findById(req.params.id)
-        : await Model.findOne({ slug: req.params.id });
+      const numericId = Number(req.params.id);
+      const isNumericId = Number.isInteger(numericId) && String(numericId) === req.params.id;
+      const item = isNumericId
+        ? await Model.findByPk(req.params.id)
+        : await Model.findOne({ where: { slug: req.params.id } });
       if (!item) return res.status(404).json({ message: "Not found" });
-      res.json(item);
+      res.json(serializeRecord(item));
     } catch (err) {
       next(err);
     }
@@ -64,7 +117,7 @@ export const crudRoutes = (Model, { publicOnly = false, publicFilter } = {}) => 
         if ("title" in body) body.slug = slugify(body.title);
         syncGalleryImages(body);
         const item = await Model.create(body);
-        res.status(201).json(item);
+        res.status(201).json(serializeRecord(item));
       } catch (err) {
         next(err);
       }
@@ -75,9 +128,10 @@ export const crudRoutes = (Model, { publicOnly = false, publicFilter } = {}) => 
         const body = { ...req.body };
         if (body.title) body.slug = slugify(body.title);
         syncGalleryImages(body);
-        const item = await Model.findByIdAndUpdate(req.params.id, body, { new: true, runValidators: true });
-        if (!item) return res.status(404).json({ message: "Not found" });
-        res.json(item);
+        const existing = await Model.findByPk(req.params.id);
+        if (!existing) return res.status(404).json({ message: "Not found" });
+        const item = await existing.update(body);
+        res.json(serializeRecord(item));
       } catch (err) {
         next(err);
       }
@@ -85,8 +139,8 @@ export const crudRoutes = (Model, { publicOnly = false, publicFilter } = {}) => 
 
     router.delete("/:id", async (req, res, next) => {
       try {
-        const item = await Model.findByIdAndDelete(req.params.id);
-        if (!item) return res.status(404).json({ message: "Not found" });
+        const deleted = await Model.destroy({ where: { id: req.params.id } });
+        if (!deleted) return res.status(404).json({ message: "Not found" });
         res.json({ message: "Deleted" });
       } catch (err) {
         next(err);
